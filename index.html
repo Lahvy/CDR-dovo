@@ -8,17 +8,29 @@
     :root{
       --bg:#0b1220;
       --card:#111a2e;
+      --card-2:#0f1830;
       --text:#e8eefc;
       --muted:#9fb0d0;
       --line:#23314f;
+
       --primary:#4f7cff;
       --primary-2:#3b63e6;
       --secondary:#263454;
+
       --danger:#ff5a6a;
+      --danger-2:#e74757;
+
       --weekend:#1a2746;
       --today:#ffcf5a;
-      --vac:#44d19c;
-      --vac2:#2fb985;
+
+      /* kontrastnější dovolená */
+      --vac-bg: rgba(36, 223, 154, 0.55);
+      --vac-bg-2: rgba(36, 223, 154, 0.38);
+      --vac-border: rgba(36, 223, 154, 0.85);
+
+      /* zebra */
+      --row-even: rgba(255,255,255,0.03);
+      --row-even-sticky: rgba(255,255,255,0.05);
     }
 
     *{ box-sizing:border-box; }
@@ -68,18 +80,30 @@
       color:white;
     }
     .btn-primary:hover{ background:var(--primary-2); }
+
     .btn-secondary{
       background:var(--secondary);
       color:var(--text);
       border-color:var(--line);
     }
     .btn-secondary:hover{ filter:brightness(1.08); }
+
     .btn-ghost{
       background:transparent;
       border-color:var(--line);
       color:var(--text);
     }
     .btn-ghost:hover{ background:rgba(255,255,255,0.04); }
+
+    .btn-danger{
+      background:rgba(255, 90, 106, 0.14);
+      border:1px solid rgba(255, 90, 106, 0.35);
+      color: #ffd5db;
+    }
+    .btn-danger:hover{
+      background:rgba(255, 90, 106, 0.22);
+      border-color: rgba(255, 90, 106, 0.5);
+    }
 
     .icon-btn{
       background:transparent;
@@ -128,14 +152,36 @@
     }
     .vac-table thead th:first-child{ z-index:3; }
 
+    /* Zebra řádky (lepší orientace) */
+    .vac-table tbody tr:nth-child(even) td{
+      background: var(--row-even);
+    }
+    .vac-table tbody tr:nth-child(even) td:first-child{
+      background: color-mix(in srgb, var(--card) 70%, var(--row-even-sticky) 30%);
+    }
+
     .cell-weekend{ background:rgba(68, 93, 160, 0.15); }
+    .vac-table tbody tr:nth-child(even) td.cell-weekend{
+      background: color-mix(in srgb, rgba(68, 93, 160, 0.15) 70%, var(--row-even) 30%);
+    }
+
     .cell-today{
-      outline:2px solid rgba(255, 207, 90, 0.8);
+      outline:2px solid rgba(255, 207, 90, 0.9);
       outline-offset:-2px;
     }
+
+    /* Kontrastnější dovolená + jasný okraj */
     .cell-vac{
-      background:linear-gradient(180deg, rgba(68,209,156,0.35), rgba(47,185,133,0.22));
+      background: linear-gradient(180deg, var(--vac-bg), var(--vac-bg-2)) !important;
+      box-shadow: inset 0 0 0 2px var(--vac-border);
     }
+    .cell-vac.clickable{
+      cursor:pointer;
+    }
+    .cell-vac.clickable:hover{
+      filter: brightness(1.08);
+    }
+
     .name{
       display:flex;
       align-items:center;
@@ -180,8 +226,16 @@
       padding:14px;
       border-top:1px solid var(--line);
       display:flex;
+      justify-content:space-between;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    .modal-footer .right{
+      display:flex;
       justify-content:flex-end;
       gap:10px;
+      flex-wrap:wrap;
+      margin-left:auto;
     }
 
     .field{ display:flex; flex-direction:column; gap:6px; margin-bottom:12px; }
@@ -268,13 +322,16 @@
       </div>
 
       <div class="modal-footer">
-        <button class="btn btn-ghost" data-close="memberModal">Storno</button>
-        <button id="saveMemberBtn" class="btn btn-primary">Uložit</button>
+        <div></div>
+        <div class="right">
+          <button class="btn btn-ghost" data-close="memberModal">Storno</button>
+          <button id="saveMemberBtn" class="btn btn-primary">Uložit</button>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- MODAL: Nová dovolená -->
+  <!-- MODAL: Nová dovolená / Detail dovolené -->
   <div id="vacationModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="vacationModalTitle">
     <div class="modal-card">
       <div class="modal-header">
@@ -304,35 +361,38 @@
       </div>
 
       <div class="modal-footer">
-        <button class="btn btn-ghost" data-close="vacationModal">Storno</button>
-        <button id="saveVacationBtn" class="btn btn-primary">Uložit</button>
+        <!-- Tertiary -->
+        <button id="deleteVacationBtn" class="btn btn-danger hidden">Zrušit dovolenou</button>
+
+        <div class="right">
+          <button class="btn btn-ghost" data-close="vacationModal">Storno</button>
+          <button id="saveVacationBtn" class="btn btn-primary">Uložit</button>
+        </div>
       </div>
     </div>
   </div>
 
   <script>
     // =====================
-    // 1) ZÁKLADNÍ DATA (zatím localStorage)
+    // 1) DATA (zatím localStorage)
     // =====================
 
     const STORAGE_KEY = "vacation_app_v1";
 
-    // default state
     let state = {
       year: new Date().getFullYear(),
       month: new Date().getMonth(), // 0-11
       members: [],                 // [{id, name}]
-      vacations: []                // [{id, memberId, startDate, endDate}]
+      vacations: [],               // [{id, memberId, startDate, endDate}]
+      editingVacationId: null      // id dovolené v režimu editace
     };
 
     function loadData(){
-      // TODO: až bude Firebase, tady se bude načítat z Firestore
       const raw = localStorage.getItem(STORAGE_KEY);
       if(!raw) return;
       try {
         const parsed = JSON.parse(raw);
         if(parsed && typeof parsed === "object"){
-          // opatrně: nenačítáme year/month, ty jsou view stav (aktuální)
           state.members = Array.isArray(parsed.members) ? parsed.members : [];
           state.vacations = Array.isArray(parsed.vacations) ? parsed.vacations : [];
         }
@@ -342,7 +402,6 @@
     }
 
     function saveData(){
-      // TODO: až bude Firebase, tady se bude ukládat do Firestore
       const payload = { members: state.members, vacations: state.vacations };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
     }
@@ -376,7 +435,6 @@
       }[c]));
     }
     function uid(){
-      // jednoduché ID bez knihoven
       return Math.random().toString(16).slice(2) + "-" + Date.now().toString(16);
     }
 
@@ -400,6 +458,18 @@
       return out;
     }
 
+    function isDateInRange(dateISO, startISO, endISO){
+      return dateISO >= startISO && dateISO <= endISO;
+    }
+
+    function findVacationById(id){
+      return state.vacations.find(v => v.id === id) || null;
+    }
+
+    function findVacationsCovering(memberId, dateISO){
+      return state.vacations.filter(v => v.memberId === memberId && isDateInRange(dateISO, v.startDate, v.endDate));
+    }
+
     // =====================
     // 3) UI – ELEMENTY
     // =====================
@@ -420,10 +490,12 @@
       saveMemberBtn: document.getElementById("saveMemberBtn"),
 
       vacationModal: document.getElementById("vacationModal"),
+      vacationModalTitle: document.getElementById("vacationModalTitle"),
       memberSelect: document.getElementById("memberSelect"),
       startDateInput: document.getElementById("startDateInput"),
       endDateInput: document.getElementById("endDateInput"),
       saveVacationBtn: document.getElementById("saveVacationBtn"),
+      deleteVacationBtn: document.getElementById("deleteVacationBtn"),
       modalError: document.getElementById("modalError"),
     };
 
@@ -445,7 +517,7 @@
       els.yearLabel.textContent = state.year;
     }
 
-    function renderMemberSelect(){
+    function renderMemberSelect(selectedId = null){
       els.memberSelect.innerHTML = "";
       if (state.members.length === 0){
         const opt = document.createElement("option");
@@ -460,6 +532,7 @@
         const opt = document.createElement("option");
         opt.value = m.id;
         opt.textContent = m.name;
+        if(selectedId && selectedId === m.id) opt.selected = true;
         els.memberSelect.appendChild(opt);
       }
     }
@@ -470,17 +543,24 @@
       const dim = daysInMonth(year, month);
       const today = new Date();
 
-      // Map memberId -> Set(dayNumber)
-      const vacMap = new Map();
+      // Map memberId -> Set(dayNumber) + map cell->vacationId
+      const vacDaysMap = new Map();  // memberId -> Set(day)
+      const cellVacIdMap = new Map(); // key `${memberId}|${day}` -> vacationId (first match)
+
       for (const m of state.members){
-        vacMap.set(m.id, new Set());
+        vacDaysMap.set(m.id, new Set());
       }
 
       for (const v of state.vacations){
         const days = clampVacationToMonth(v, year, month);
-        if (!vacMap.has(v.memberId)) vacMap.set(v.memberId, new Set());
-        const set = vacMap.get(v.memberId);
-        days.forEach(d => set.add(d));
+        if (!vacDaysMap.has(v.memberId)) vacDaysMap.set(v.memberId, new Set());
+        const set = vacDaysMap.get(v.memberId);
+        days.forEach(d => {
+          set.add(d);
+          const key = `${v.memberId}|${d}`;
+          // pokud je víc dovolených přes ten samý den, vezmeme první, ať je UI jednoduché
+          if(!cellVacIdMap.has(key)) cellVacIdMap.set(key, v.id);
+        });
       }
 
       const thead = document.createElement("thead");
@@ -495,7 +575,6 @@
         th.textContent = d;
         trh.appendChild(th);
       }
-
       thead.appendChild(trh);
 
       const tbody = document.createElement("tbody");
@@ -510,17 +589,29 @@
       } else {
         for (const m of state.members){
           const tr = document.createElement("tr");
+
           const tdName = document.createElement("td");
           tdName.innerHTML = `<div class="name"><strong>${escapeHtml(m.name)}</strong><span class="sub"></span></div>`;
           tr.appendChild(tdName);
 
-          const memberVacSet = vacMap.get(m.id) || new Set();
+          const memberVacSet = vacDaysMap.get(m.id) || new Set();
 
           for (let d=1; d<=dim; d++){
             const td = document.createElement("td");
 
+            // základní metadata pro klik
+            td.dataset.memberId = m.id;
+            td.dataset.day = String(d);
+
             if (isWeekend(year, month, d)) td.classList.add("cell-weekend");
-            if (memberVacSet.has(d)) td.classList.add("cell-vac");
+
+            if (memberVacSet.has(d)) {
+              td.classList.add("cell-vac", "clickable");
+              const key = `${m.id}|${d}`;
+              const vacId = cellVacIdMap.get(key);
+              if(vacId) td.dataset.vacationId = vacId;
+              td.title = "Klikni pro detail / úpravu dovolené";
+            }
 
             const dateObj = new Date(year, month, d);
             if (sameDay(dateObj, today)) td.classList.add("cell-today");
@@ -543,18 +634,52 @@
     }
 
     // =====================
-    // 5) AKCE (Add member / Add vacation)
+    // 5) MODAL režimy (Nová vs Editace)
     // =====================
 
     function showModalError(msg){
       els.modalError.textContent = msg;
       els.modalError.classList.remove("hidden");
     }
-
     function hideModalError(){
       els.modalError.textContent = "";
       els.modalError.classList.add("hidden");
     }
+
+    function openNewVacationModal(){
+      state.editingVacationId = null;
+      els.vacationModalTitle.textContent = "Nová dovolená";
+      els.deleteVacationBtn.classList.add("hidden");
+
+      renderMemberSelect();
+
+      const todayISO = toISODate(new Date());
+      els.startDateInput.value = todayISO;
+      els.endDateInput.value = todayISO;
+
+      hideModalError();
+      openModal("vacationModal");
+    }
+
+    function openEditVacationModal(vacationId){
+      const v = findVacationById(vacationId);
+      if(!v) return;
+
+      state.editingVacationId = vacationId;
+      els.vacationModalTitle.textContent = "Detail dovolené";
+      els.deleteVacationBtn.classList.remove("hidden");
+
+      renderMemberSelect(v.memberId);
+      els.startDateInput.value = v.startDate;
+      els.endDateInput.value = v.endDate;
+
+      hideModalError();
+      openModal("vacationModal");
+    }
+
+    // =====================
+    // 6) CRUD: Members & Vacations
+    // =====================
 
     function addMember(name){
       state.members.push({ id: uid(), name: name.trim() });
@@ -566,8 +691,21 @@
       saveData();
     }
 
+    function updateVacation(id, memberId, startDate, endDate){
+      const idx = state.vacations.findIndex(v => v.id === id);
+      if(idx === -1) return false;
+      state.vacations[idx] = { ...state.vacations[idx], memberId, startDate, endDate };
+      saveData();
+      return true;
+    }
+
+    function deleteVacation(id){
+      state.vacations = state.vacations.filter(v => v.id !== id);
+      saveData();
+    }
+
     // =====================
-    // 6) EVENTY
+    // 7) EVENTY
     // =====================
 
     function bindModalClose(){
@@ -581,7 +719,6 @@
         });
       });
 
-      // ESC zavře modál
       document.addEventListener("keydown", (e) => {
         if(e.key === "Escape"){
           closeModal("memberModal");
@@ -621,14 +758,7 @@
       });
 
       els.newVacationBtn.addEventListener("click", () => {
-        renderMemberSelect();
-
-        const todayISO = toISODate(new Date());
-        els.startDateInput.value = todayISO;
-        els.endDateInput.value = todayISO;
-
-        hideModalError();
-        openModal("vacationModal");
+        openNewVacationModal();
       });
 
       els.saveVacationBtn.addEventListener("click", () => {
@@ -651,19 +781,50 @@
           return;
         }
 
-        addVacation(memberId, startDate, endDate);
+        if(state.editingVacationId){
+          const ok = updateVacation(state.editingVacationId, memberId, startDate, endDate);
+          if(!ok){
+            showModalError("Tahle dovolená už v datech není (asi byla smazána).");
+            return;
+          }
+        } else {
+          addVacation(memberId, startDate, endDate);
+        }
+
         closeModal("vacationModal");
         refresh();
       });
 
-      // Enter v inputu pro jméno uloží
+      els.deleteVacationBtn.addEventListener("click", () => {
+        if(!state.editingVacationId) return;
+        // jednoduché potvrzení, aby se nesmazalo omylem
+        const sure = confirm("Opravdu chceš zrušit tuto dovolenou?");
+        if(!sure) return;
+
+        deleteVacation(state.editingVacationId);
+        state.editingVacationId = null;
+        closeModal("vacationModal");
+        refresh();
+      });
+
       els.memberNameInput.addEventListener("keydown", (e) => {
         if(e.key === "Enter") els.saveMemberBtn.click();
+      });
+
+      // Klikání do tabulky: otevře detail dovolené jen pokud je to zvýrazněná buňka
+      els.table.addEventListener("click", (e) => {
+        const td = e.target.closest("td");
+        if(!td) return;
+
+        const vacId = td.dataset.vacationId;
+        if(!vacId) return; // klik mimo dovolenou = nic
+
+        openEditVacationModal(vacId);
       });
     }
 
     // =====================
-    // 7) START
+    // 8) START
     // =====================
 
     function init(){
