@@ -1,0 +1,679 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Dovolená – tým</title>
+  <style>
+    :root{
+      --bg:#0b1220;
+      --card:#111a2e;
+      --text:#e8eefc;
+      --muted:#9fb0d0;
+      --line:#23314f;
+      --primary:#4f7cff;
+      --primary-2:#3b63e6;
+      --secondary:#263454;
+      --danger:#ff5a6a;
+      --weekend:#1a2746;
+      --today:#ffcf5a;
+      --vac:#44d19c;
+      --vac2:#2fb985;
+    }
+
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      font-family:system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background:linear-gradient(180deg,#081022, #0b1220);
+      color:var(--text);
+    }
+    .app{ max-width:1200px; margin:0 auto; padding:20px; }
+
+    .topbar{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:16px;
+      margin-bottom:16px;
+      flex-wrap:wrap;
+    }
+    .month-nav{
+      display:flex;
+      align-items:center;
+      gap:10px;
+    }
+    .month-title{ line-height:1.2; }
+    .month-label{ font-weight:800; font-size:18px; }
+    .year-label{ color:var(--muted); font-size:12px; }
+
+    .actions{ display:flex; gap:10px; flex-wrap:wrap; }
+
+    .status{
+      color:var(--muted);
+      margin: 8px 0 14px;
+      font-size: 13px;
+    }
+
+    .btn{
+      border:1px solid transparent;
+      border-radius:10px;
+      padding:10px 12px;
+      font-weight:700;
+      cursor:pointer;
+      user-select:none;
+    }
+    .btn-primary{
+      background:var(--primary);
+      color:white;
+    }
+    .btn-primary:hover{ background:var(--primary-2); }
+    .btn-secondary{
+      background:var(--secondary);
+      color:var(--text);
+      border-color:var(--line);
+    }
+    .btn-secondary:hover{ filter:brightness(1.08); }
+    .btn-ghost{
+      background:transparent;
+      border-color:var(--line);
+      color:var(--text);
+    }
+    .btn-ghost:hover{ background:rgba(255,255,255,0.04); }
+
+    .icon-btn{
+      background:transparent;
+      border:1px solid var(--line);
+      color:var(--text);
+      border-radius:10px;
+      padding:6px 10px;
+      cursor:pointer;
+    }
+
+    .table-wrap{
+      background:rgba(255,255,255,0.02);
+      border:1px solid var(--line);
+      border-radius:14px;
+      overflow:auto;
+    }
+
+    .vac-table{
+      border-collapse:separate;
+      border-spacing:0;
+      width:max-content;
+      min-width:100%;
+      font-size:13px;
+    }
+    .vac-table th, .vac-table td{
+      border-right:1px solid var(--line);
+      border-bottom:1px solid var(--line);
+      padding:8px 10px;
+      white-space:nowrap;
+      text-align:center;
+    }
+    .vac-table th:first-child, .vac-table td:first-child{
+      position:sticky;
+      left:0;
+      background:var(--card);
+      z-index:2;
+      text-align:left;
+      min-width:240px;
+    }
+    .vac-table thead th{
+      position:sticky;
+      top:0;
+      background:var(--card);
+      z-index:1;
+      font-weight:800;
+    }
+    .vac-table thead th:first-child{ z-index:3; }
+
+    .cell-weekend{ background:rgba(68, 93, 160, 0.15); }
+    .cell-today{
+      outline:2px solid rgba(255, 207, 90, 0.8);
+      outline-offset:-2px;
+    }
+    .cell-vac{
+      background:linear-gradient(180deg, rgba(68,209,156,0.35), rgba(47,185,133,0.22));
+    }
+    .name{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+    }
+    .sub{
+      color:var(--muted);
+      font-size:12px;
+      font-weight:600;
+    }
+
+    /* MODAL */
+    .modal{
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,0.6);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:16px;
+    }
+    .hidden{ display:none !important; }
+
+    .modal-card{
+      width:min(560px, 100%);
+      background:var(--card);
+      border:1px solid var(--line);
+      border-radius:16px;
+      overflow:hidden;
+      box-shadow:0 20px 60px rgba(0,0,0,0.45);
+    }
+    .modal-header{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding:14px 14px;
+      border-bottom:1px solid var(--line);
+    }
+    .modal-body{ padding:14px; }
+    .modal-footer{
+      padding:14px;
+      border-top:1px solid var(--line);
+      display:flex;
+      justify-content:flex-end;
+      gap:10px;
+    }
+
+    .field{ display:flex; flex-direction:column; gap:6px; margin-bottom:12px; }
+    .field span{ color:var(--muted); font-size:12px; font-weight:700; }
+    .field input, .field select{
+      padding:10px 12px;
+      border-radius:10px;
+      border:1px solid var(--line);
+      background:#0d1528;
+      color:var(--text);
+      font-weight:650;
+    }
+    .grid2{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:12px;
+    }
+    .error{
+      color:var(--danger);
+      background:rgba(255,90,106,0.08);
+      border:1px solid rgba(255,90,106,0.25);
+      padding:10px 12px;
+      border-radius:12px;
+      font-weight:650;
+    }
+
+    .hint{
+      font-size:12px;
+      color:var(--muted);
+      margin-top:-6px;
+      margin-bottom:10px;
+    }
+
+    @media (max-width: 560px){
+      .grid2{ grid-template-columns:1fr; }
+      .vac-table th:first-child, .vac-table td:first-child{ min-width:200px; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="month-nav">
+        <button id="prevMonthBtn" class="btn btn-ghost" aria-label="Předchozí měsíc">◀</button>
+        <div class="month-title">
+          <div id="monthLabel" class="month-label">Měsíc</div>
+          <div id="yearLabel" class="year-label">Rok</div>
+        </div>
+        <button id="nextMonthBtn" class="btn btn-ghost" aria-label="Další měsíc">▶</button>
+      </div>
+
+      <div class="actions">
+        <button id="addMemberBtn" class="btn btn-secondary">+ Přidat jméno</button>
+        <button id="newVacationBtn" class="btn btn-primary">Nová dovolená</button>
+      </div>
+    </header>
+
+    <main>
+      <div id="statusBar" class="status">Načítám…</div>
+
+      <div class="table-wrap">
+        <table id="vacationTable" class="vac-table" aria-label="Tabulka dovolených">
+          <!-- generuje se v JS -->
+        </table>
+      </div>
+    </main>
+  </div>
+
+  <!-- MODAL: Přidat jméno -->
+  <div id="memberModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="memberModalTitle">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 id="memberModalTitle" style="margin:0;font-size:16px;">Přidat člena týmu</h2>
+        <button class="icon-btn" data-close="memberModal" aria-label="Zavřít">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <label class="field">
+          <span>Jméno</span>
+          <input id="memberNameInput" type="text" placeholder="Např. Jana Nováková" />
+        </label>
+        <div class="hint">Tip: Zatím se ukládá do prohlížeče (localStorage). Firebase doplníme později.</div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-ghost" data-close="memberModal">Storno</button>
+        <button id="saveMemberBtn" class="btn btn-primary">Uložit</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Nová dovolená -->
+  <div id="vacationModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="vacationModalTitle">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 id="vacationModalTitle" style="margin:0;font-size:16px;">Nová dovolená</h2>
+        <button class="icon-btn" data-close="vacationModal" aria-label="Zavřít">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <label class="field">
+          <span>Člen týmu</span>
+          <select id="memberSelect"></select>
+        </label>
+
+        <div class="grid2">
+          <label class="field">
+            <span>Dovolená od</span>
+            <input id="startDateInput" type="date" />
+          </label>
+
+          <label class="field">
+            <span>Do kdy</span>
+            <input id="endDateInput" type="date" />
+          </label>
+        </div>
+
+        <div id="modalError" class="error hidden"></div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-ghost" data-close="vacationModal">Storno</button>
+        <button id="saveVacationBtn" class="btn btn-primary">Uložit</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // =====================
+    // 1) ZÁKLADNÍ DATA (zatím localStorage)
+    // =====================
+
+    const STORAGE_KEY = "vacation_app_v1";
+
+    // default state
+    let state = {
+      year: new Date().getFullYear(),
+      month: new Date().getMonth(), // 0-11
+      members: [],                 // [{id, name}]
+      vacations: []                // [{id, memberId, startDate, endDate}]
+    };
+
+    function loadData(){
+      // TODO: až bude Firebase, tady se bude načítat z Firestore
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(!raw) return;
+      try {
+        const parsed = JSON.parse(raw);
+        if(parsed && typeof parsed === "object"){
+          // opatrně: nenačítáme year/month, ty jsou view stav (aktuální)
+          state.members = Array.isArray(parsed.members) ? parsed.members : [];
+          state.vacations = Array.isArray(parsed.vacations) ? parsed.vacations : [];
+        }
+      } catch(e){
+        console.warn("Nepodařilo se načíst data:", e);
+      }
+    }
+
+    function saveData(){
+      // TODO: až bude Firebase, tady se bude ukládat do Firestore
+      const payload = { members: state.members, vacations: state.vacations };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    }
+
+    // =====================
+    // 2) HELPERY
+    // =====================
+
+    const monthNames = [
+      "Leden","Únor","Březen","Duben","Květen","Červen",
+      "Červenec","Srpen","Září","Říjen","Listopad","Prosinec"
+    ];
+
+    function pad2(n){ return String(n).padStart(2,"0"); }
+    function toISODate(d){
+      return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+    }
+    function daysInMonth(year, month){
+      return new Date(year, month + 1, 0).getDate();
+    }
+    function isWeekend(year, month, day){
+      const wd = new Date(year, month, day).getDay(); // 0 Sun..6 Sat
+      return wd === 0 || wd === 6;
+    }
+    function sameDay(a, b){
+      return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate();
+    }
+    function escapeHtml(s){
+      return String(s).replace(/[&<>"']/g, (c) => ({
+        "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+      }[c]));
+    }
+    function uid(){
+      // jednoduché ID bez knihoven
+      return Math.random().toString(16).slice(2) + "-" + Date.now().toString(16);
+    }
+
+    // Vrátí čísla dnů v aktuálním měsíci, které dovolená pokrývá
+    function clampVacationToMonth(v, year, month){
+      const start = new Date(v.startDate + "T00:00:00");
+      const end   = new Date(v.endDate   + "T00:00:00");
+      const monthStart = new Date(year, month, 1);
+      const monthEnd   = new Date(year, month, daysInMonth(year, month));
+
+      const s = start > monthStart ? start : monthStart;
+      const e = end < monthEnd ? end : monthEnd;
+      if (e < s) return [];
+
+      const out = [];
+      let cur = new Date(s);
+      while (cur <= e){
+        out.push(cur.getDate());
+        cur.setDate(cur.getDate()+1);
+      }
+      return out;
+    }
+
+    // =====================
+    // 3) UI – ELEMENTY
+    // =====================
+
+    const els = {
+      statusBar: document.getElementById("statusBar"),
+      table: document.getElementById("vacationTable"),
+      monthLabel: document.getElementById("monthLabel"),
+      yearLabel: document.getElementById("yearLabel"),
+      prevMonthBtn: document.getElementById("prevMonthBtn"),
+      nextMonthBtn: document.getElementById("nextMonthBtn"),
+
+      addMemberBtn: document.getElementById("addMemberBtn"),
+      newVacationBtn: document.getElementById("newVacationBtn"),
+
+      memberModal: document.getElementById("memberModal"),
+      memberNameInput: document.getElementById("memberNameInput"),
+      saveMemberBtn: document.getElementById("saveMemberBtn"),
+
+      vacationModal: document.getElementById("vacationModal"),
+      memberSelect: document.getElementById("memberSelect"),
+      startDateInput: document.getElementById("startDateInput"),
+      endDateInput: document.getElementById("endDateInput"),
+      saveVacationBtn: document.getElementById("saveVacationBtn"),
+      modalError: document.getElementById("modalError"),
+    };
+
+    function setStatus(msg){ els.statusBar.textContent = msg; }
+
+    function openModal(id){
+      document.getElementById(id).classList.remove("hidden");
+    }
+    function closeModal(id){
+      document.getElementById(id).classList.add("hidden");
+    }
+
+    // =====================
+    // 4) RENDER
+    // =====================
+
+    function renderHeader(){
+      els.monthLabel.textContent = monthNames[state.month];
+      els.yearLabel.textContent = state.year;
+    }
+
+    function renderMemberSelect(){
+      els.memberSelect.innerHTML = "";
+      if (state.members.length === 0){
+        const opt = document.createElement("option");
+        opt.value = "";
+        opt.textContent = "Nejdřív přidej člena týmu";
+        els.memberSelect.appendChild(opt);
+        els.memberSelect.disabled = true;
+        return;
+      }
+      els.memberSelect.disabled = false;
+      for (const m of state.members){
+        const opt = document.createElement("option");
+        opt.value = m.id;
+        opt.textContent = m.name;
+        els.memberSelect.appendChild(opt);
+      }
+    }
+
+    function renderTable(){
+      const year = state.year;
+      const month = state.month;
+      const dim = daysInMonth(year, month);
+      const today = new Date();
+
+      // Map memberId -> Set(dayNumber)
+      const vacMap = new Map();
+      for (const m of state.members){
+        vacMap.set(m.id, new Set());
+      }
+
+      for (const v of state.vacations){
+        const days = clampVacationToMonth(v, year, month);
+        if (!vacMap.has(v.memberId)) vacMap.set(v.memberId, new Set());
+        const set = vacMap.get(v.memberId);
+        days.forEach(d => set.add(d));
+      }
+
+      const thead = document.createElement("thead");
+      const trh = document.createElement("tr");
+
+      const th0 = document.createElement("th");
+      th0.textContent = "Člen týmu";
+      trh.appendChild(th0);
+
+      for (let d=1; d<=dim; d++){
+        const th = document.createElement("th");
+        th.textContent = d;
+        trh.appendChild(th);
+      }
+
+      thead.appendChild(trh);
+
+      const tbody = document.createElement("tbody");
+
+      if (state.members.length === 0){
+        const tr = document.createElement("tr");
+        const td = document.createElement("td");
+        td.colSpan = dim + 1;
+        td.innerHTML = `<div class="name"><strong>Žádná jména</strong><span class="sub">Klikni na “+ Přidat jméno”</span></div>`;
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+      } else {
+        for (const m of state.members){
+          const tr = document.createElement("tr");
+          const tdName = document.createElement("td");
+          tdName.innerHTML = `<div class="name"><strong>${escapeHtml(m.name)}</strong><span class="sub"></span></div>`;
+          tr.appendChild(tdName);
+
+          const memberVacSet = vacMap.get(m.id) || new Set();
+
+          for (let d=1; d<=dim; d++){
+            const td = document.createElement("td");
+
+            if (isWeekend(year, month, d)) td.classList.add("cell-weekend");
+            if (memberVacSet.has(d)) td.classList.add("cell-vac");
+
+            const dateObj = new Date(year, month, d);
+            if (sameDay(dateObj, today)) td.classList.add("cell-today");
+
+            tr.appendChild(td);
+          }
+          tbody.appendChild(tr);
+        }
+      }
+
+      els.table.innerHTML = "";
+      els.table.appendChild(thead);
+      els.table.appendChild(tbody);
+    }
+
+    function refresh(){
+      renderHeader();
+      renderTable();
+      setStatus(`Zobrazuji: ${monthNames[state.month]} ${state.year} (data zatím v prohlížeči)`);
+    }
+
+    // =====================
+    // 5) AKCE (Add member / Add vacation)
+    // =====================
+
+    function showModalError(msg){
+      els.modalError.textContent = msg;
+      els.modalError.classList.remove("hidden");
+    }
+
+    function hideModalError(){
+      els.modalError.textContent = "";
+      els.modalError.classList.add("hidden");
+    }
+
+    function addMember(name){
+      state.members.push({ id: uid(), name: name.trim() });
+      saveData();
+    }
+
+    function addVacation(memberId, startDate, endDate){
+      state.vacations.push({ id: uid(), memberId, startDate, endDate });
+      saveData();
+    }
+
+    // =====================
+    // 6) EVENTY
+    // =====================
+
+    function bindModalClose(){
+      document.querySelectorAll("[data-close]").forEach(btn => {
+        btn.addEventListener("click", () => closeModal(btn.dataset.close));
+      });
+
+      [els.memberModal, els.vacationModal].forEach(modal => {
+        modal.addEventListener("click", (e) => {
+          if (e.target === modal) modal.classList.add("hidden");
+        });
+      });
+
+      // ESC zavře modál
+      document.addEventListener("keydown", (e) => {
+        if(e.key === "Escape"){
+          closeModal("memberModal");
+          closeModal("vacationModal");
+        }
+      });
+    }
+
+    function bindButtons(){
+      els.prevMonthBtn.addEventListener("click", () => {
+        state.month--;
+        if (state.month < 0){ state.month = 11; state.year--; }
+        refresh();
+      });
+
+      els.nextMonthBtn.addEventListener("click", () => {
+        state.month++;
+        if (state.month > 11){ state.month = 0; state.year++; }
+        refresh();
+      });
+
+      els.addMemberBtn.addEventListener("click", () => {
+        els.memberNameInput.value = "";
+        openModal("memberModal");
+        setTimeout(() => els.memberNameInput.focus(), 0);
+      });
+
+      els.saveMemberBtn.addEventListener("click", () => {
+        const name = els.memberNameInput.value.trim();
+        if(!name){
+          els.memberNameInput.focus();
+          return;
+        }
+        addMember(name);
+        closeModal("memberModal");
+        refresh();
+      });
+
+      els.newVacationBtn.addEventListener("click", () => {
+        renderMemberSelect();
+
+        const todayISO = toISODate(new Date());
+        els.startDateInput.value = todayISO;
+        els.endDateInput.value = todayISO;
+
+        hideModalError();
+        openModal("vacationModal");
+      });
+
+      els.saveVacationBtn.addEventListener("click", () => {
+        hideModalError();
+
+        const memberId  = els.memberSelect.value;
+        const startDate = els.startDateInput.value;
+        const endDate   = els.endDateInput.value;
+
+        if(!memberId){
+          showModalError("Nejdřív přidej člena týmu.");
+          return;
+        }
+        if(!startDate || !endDate){
+          showModalError("Vyber datum od a do.");
+          return;
+        }
+        if(endDate < startDate){
+          showModalError("Datum 'Do kdy' musí být stejné nebo pozdější než 'Od'.");
+          return;
+        }
+
+        addVacation(memberId, startDate, endDate);
+        closeModal("vacationModal");
+        refresh();
+      });
+
+      // Enter v inputu pro jméno uloží
+      els.memberNameInput.addEventListener("keydown", (e) => {
+        if(e.key === "Enter") els.saveMemberBtn.click();
+      });
+    }
+
+    // =====================
+    // 7) START
+    // =====================
+
+    function init(){
+      loadData();
+      bindModalClose();
+      bindButtons();
+      refresh();
+    }
+
+    init();
+  </script>
+</body>
+</html>
